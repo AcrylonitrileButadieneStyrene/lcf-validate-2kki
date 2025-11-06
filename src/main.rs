@@ -132,7 +132,7 @@ fn check_map(map: &std::path::Path, level: &LogLevel) {
 
 fn exit() -> ! {
     if atty::is(atty::Stream::Stdin) {
-        print!("Press enter to exit...");
+        eprint!("Press enter to exit...");
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
         drop(std::io::stdin().read_line(&mut String::new()));
     }
