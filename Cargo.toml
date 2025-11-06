@@ -3,6 +3,14 @@ name = "lcf-validate-2kki"
 version = "0.1.0"
 edition = "2024"
 
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+lto = true
+strip = true
+panic = "abort"
+
 [dependencies]
 atty = "0.2.14"
 clap = { version = "4.5.51", features = ["derive"] }
