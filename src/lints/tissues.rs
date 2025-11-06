@@ -11,7 +11,14 @@ impl super::Lint for TissueLint {
 
     fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
         let main_sig = encoding_rs::SHIFT_JIS.encode("ティッシュ++++").0.to_vec();
-        let helper_sig = encoding_rs::SHIFT_JIS.encode("ティッシュ").0.to_vec();
+        let helper_sigs = vec![
+            "ティッシ", // carciniara beach (Map1024.lmu) uses ゥ instead of ュ
+            "tis",      // #fluxide uses this
+                        // rustfmt doesn't understand that japanese characters are longer than latin ones
+        ]
+        .into_iter()
+        .map(|valid| encoding_rs::SHIFT_JIS.encode(valid).0.to_vec())
+        .collect::<Vec<_>>();
 
         let Some(tissue) = map.events.iter().find(|event| event.name == main_sig) else {
             return Diagnostic::Warning("Does not have tissue events".to_string());
@@ -50,7 +57,7 @@ impl super::Lint for TissueLint {
                     ));
                 };
 
-                if !event.name.starts_with(&helper_sig) {
+                if !helper_sigs.iter().any(|sig| event.name.starts_with(sig)) {
                     return Some(format!(
                         "\n    Helper event {} points to incorrect event EV{id:04} ({})",
                         index + 1,

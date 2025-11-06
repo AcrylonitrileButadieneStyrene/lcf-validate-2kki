@@ -9,6 +9,14 @@ mod lints;
 
 pub use lints::{Diagnostic, Lint};
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, clap::ValueEnum)]
+pub enum LogLevel {
+    #[default]
+    All,
+    Warn,
+    Error,
+}
+
 #[derive(clap::Parser)]
 struct Args {
     #[arg(index = 1, default_value = ".")]
@@ -16,6 +24,9 @@ struct Args {
     /// Check every map file in a game.
     #[arg(long)]
     all: bool,
+    /// Minimum level for logging, everything lower will be ignored.
+    #[arg(long)]
+    level: LogLevel,
 }
 
 fn main() {
@@ -34,19 +45,20 @@ fn main() {
             .unwrap();
 
             for (id, _) in &tree.maps[1..] {
-                check_map(&path.join(format!("Map{id:04}.lmu")));
+                check_map(&path.join(format!("Map{id:04}.lmu")), &args.level);
             }
         } else {
-            check_map(&directory_browser::run(path));
+            check_map(&directory_browser::run(path), &args.level);
         }
     } else {
         match args.path.extension().and_then(std::ffi::OsStr::to_str) {
             Some("ldb") | Some("lmt") => {
-                check_map(&directory_browser::run(
-                    args.path.parent().unwrap().to_owned(),
-                ));
+                check_map(
+                    &directory_browser::run(args.path.parent().unwrap().to_owned()),
+                    &args.level,
+                );
             }
-            Some("lmu") => check_map(&args.path),
+            Some("lmu") => check_map(&args.path, &args.level),
             x => {
                 println!(
                     "Unrecognized extension {} is not supported.",
@@ -73,12 +85,13 @@ fn find_game_dir(base: std::path::PathBuf) -> Option<std::path::PathBuf> {
     }
 }
 
-fn check_map(map: &std::path::Path) {
-    println!("{}:", map.file_name().unwrap().to_str().unwrap());
+fn check_map(map: &std::path::Path, level: &LogLevel) {
+    let print_file = || println!("{}:", map.file_name().unwrap().to_str().unwrap());
 
     let data = match std::fs::read(map) {
         Ok(data) => data,
         Err(err) => {
+            print_file();
             println!("  {}", err.red());
             return;
         }
@@ -87,19 +100,34 @@ fn check_map(map: &std::path::Path) {
     let map = match lcf::lmu::LcfMapUnit::read(&mut std::io::Cursor::new(data)) {
         Ok(map) => map,
         Err(err) => {
+            print_file();
             println!("  {}: {}", "Invalid map file".on_red(), err.red());
             return;
         }
     };
 
-    for lint in lints::ALL {
-        let name = lint.name();
-        match lint.test(&map) {
-            Diagnostic::Normal => println!("  {}", name.green()),
-            Diagnostic::Warning(warning) => println!("  {}: {warning}", name.yellow()),
-            Diagnostic::Error(err) => println!("  {}: {err}", name.red()),
+    let results = lints::ALL
+        .iter()
+        .map(|lint| (lint.name(), lint.test(&map)))
+        .filter(|(_, diagnostic)| match diagnostic {
+            Diagnostic::Normal => *level == LogLevel::All,
+            Diagnostic::Warning(_) => *level != LogLevel::Error,
+            Diagnostic::Error(_) => true,
+        })
+        .collect::<Vec<_>>();
+
+    if !results.is_empty() {
+        print_file();
+        for (name, diagnostic) in results {
+            match diagnostic {
+                Diagnostic::Normal => println!("  {}", name.green()),
+                Diagnostic::Warning(warning) => println!("  {}: {warning}", name.yellow()),
+                Diagnostic::Error(err) => println!("  {}: {err}", name.red()),
+            }
         }
     }
+
+    return;
 }
 
 fn exit() -> ! {

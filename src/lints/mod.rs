@@ -3,9 +3,11 @@ pub const ALL: &[&'static dyn Lint] = &[
     &tissues::TissueLint,
     &v44_assignment::V44AssignmentLint,
     &instant_scroll::InstantScrollLint,
+    &special_skills::SpecialSkillsLint,
 ];
 
 mod instant_scroll;
+mod special_skills;
 mod tissues;
 mod v44_assignment;
 mod weather;
