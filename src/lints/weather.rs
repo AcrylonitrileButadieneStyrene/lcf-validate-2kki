@@ -1,5 +1,7 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
+use crate::Diagnostic;
+
 pub struct WeatherLint;
 
 enum State {
@@ -14,7 +16,7 @@ impl super::Lint for WeatherLint {
         "Parity between weather and V0042"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Result<(), String> {
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
         let mut state = State::Normal;
         let mut failures = Vec::new();
 
@@ -63,9 +65,9 @@ impl super::Lint for WeatherLint {
         }
 
         if failures.is_empty() {
-            Ok(())
+            Diagnostic::Normal
         } else {
-            Err(failures
+            Diagnostic::Error(failures
                 .into_iter()
                 .map(|(is_var, event, page)| {
                     let msg = if is_var {
@@ -75,7 +77,7 @@ impl super::Lint for WeatherLint {
                     };
 
                     format!(
-                        "\n\tEV{:04} (X{}, Y{}) on page {page}: Expected a change to {msg}, but none was found.",
+                        "\n    EV{:04} (X{:03}, Y{:03}) on page {page:02}: Expected a change to {msg}, but none was found.",
                         event.id, event.x, event.y
                     )
                 })

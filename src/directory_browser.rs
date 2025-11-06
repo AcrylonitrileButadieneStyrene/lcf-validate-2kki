@@ -6,11 +6,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListState, Paragraph},
 };
 
-use crate::encoding::CodePage;
-
 struct State {
     path: std::path::PathBuf,
-    encoding: CodePage,
     maps: Vec<(u32, Map)>,
     out: Option<std::path::PathBuf>,
     list_state: ListState,
@@ -25,7 +22,6 @@ pub fn run(path: std::path::PathBuf) -> std::path::PathBuf {
     let mut tui = ratatui::init();
     let mut state = State {
         path: path.clone(),
-        encoding: CodePage::default(),
         maps: tree.maps,
         out: None,
         list_state: ListState::default().with_selected(Some(0)),
@@ -38,19 +34,6 @@ pub fn run(path: std::path::PathBuf) -> std::path::PathBuf {
             {
                 ratatui::restore();
                 std::process::exit(1);
-            }
-            Event::Key(e) if e.is_press() && e.code.is_left() => {
-                state.encoding = match state.encoding as u32 {
-                    0 => CodePage::__LENGTH as u32 - 1,
-                    x => x - 1,
-                }
-                .into();
-            }
-            Event::Key(e) if e.is_press() && e.code.is_right() => {
-                state.encoding = match (state.encoding as u32 + 1).into() {
-                    CodePage::__LENGTH => CodePage::Ascii,
-                    x => x,
-                };
             }
             Event::Key(e) if e.is_press() && e.code.is_up() => {
                 let selected = state.list_state.selected().unwrap();
@@ -91,20 +74,11 @@ fn draw(frame: &mut ratatui::Frame, state: &mut State) {
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(1), Constraint::Percentage(100)].as_ref())
         .split(frame.area());
-    let bar = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Fill(1), Constraint::Length(10)])
-        .split(layout[0]);
 
-    frame.render_widget(Paragraph::new(state.path.to_string_lossy()), bar[0]);
-    frame.render_widget(
-        Paragraph::new(format!("<{:^8}>", state.encoding.to_str())),
-        bar[1],
-    );
-
+    frame.render_widget(Paragraph::new(state.path.to_string_lossy()), layout[0]);
     frame.render_stateful_widget(
         List::new(state.maps.iter().map(|(id, map)| {
-            let name = state.encoding.to_encoding().decode(&map.name).0;
+            let name = encoding_rs::SHIFT_JIS.decode(&map.name).0;
             format!(
                 "MAP{id:04}.lmu: {}{name}",
                 " ".repeat(map.indentation as usize * 2)

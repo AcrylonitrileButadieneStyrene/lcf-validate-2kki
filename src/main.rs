@@ -5,8 +5,9 @@ use lcf::ConvertExt;
 use owo_colors::OwoColorize;
 
 mod directory_browser;
-mod encoding;
 mod lints;
+
+pub use lints::{Diagnostic, Lint};
 
 #[derive(clap::Parser)]
 struct Args {
@@ -94,8 +95,9 @@ fn check_map(map: &std::path::Path) {
     for lint in lints::ALL {
         let name = lint.name();
         match lint.test(&map) {
-            Ok(()) => println!("  {}", name.green()),
-            Err(err) => println!("  {}: {err}", name.red()),
+            Diagnostic::Normal => println!("  {}", name.green()),
+            Diagnostic::Warning(warning) => println!("  {}: {warning}", name.yellow()),
+            Diagnostic::Error(err) => println!("  {}: {err}", name.red()),
         }
     }
 }
