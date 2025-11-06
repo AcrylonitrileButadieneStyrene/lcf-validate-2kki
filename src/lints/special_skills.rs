@@ -35,7 +35,11 @@ impl super::Lint for SpecialSkillsLint {
                             ..
                         } if mode == 5 && field1 == 2 && field2 == 4 => {
                             if !excused {
-                                failures.push((event, page_index + 1))
+                                failures.push((
+                                    event,
+                                    page_index + 1,
+                                    "special skill used to check map completion without annotation",
+                                ))
                             }
                         }
                         _ => (),
@@ -44,18 +48,6 @@ impl super::Lint for SpecialSkillsLint {
             }
         }
 
-        if failures.is_empty() {
-            Diagnostic::Normal
-        } else {
-            Diagnostic::Error(failures
-                .into_iter()
-                .map(|(event, page)| {
-                    format!(
-                        "\n    EV{:04} (X{:03}, Y{:03}) on page {page:02}: Special skill used to check map completion without annotation",
-                        event.id, event.x, event.y
-                    )
-                })
-                .collect())
-        }
+        Diagnostic::from(failures.as_ref())
     }
 }

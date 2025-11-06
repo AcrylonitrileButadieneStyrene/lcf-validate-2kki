@@ -52,11 +52,19 @@ impl super::Lint for WeatherLint {
 
                 match state {
                     State::ExpectingVariable => {
-                        failures.push((true, event, page_index + 1));
+                        failures.push((
+                            event,
+                            page_index + 1,
+                            "V0042 is not changed after changing the weather.",
+                        ));
                         state = State::Normal;
                     }
                     State::ExpectingWeather => {
-                        failures.push((false, event, page_index + 1));
+                        failures.push((
+                            event,
+                            page_index + 1,
+                            "The weather is not changed after changing V0042.",
+                        ));
                         state = State::Normal;
                     }
                     _ => (),
@@ -64,24 +72,6 @@ impl super::Lint for WeatherLint {
             }
         }
 
-        if failures.is_empty() {
-            Diagnostic::Normal
-        } else {
-            Diagnostic::Error(failures
-                .into_iter()
-                .map(|(is_var, event, page)| {
-                    let msg = if is_var {
-                        "the weather after changing V0042"
-                    } else {
-                        "V0042 after changing the weather"
-                    };
-
-                    format!(
-                        "\n    EV{:04} (X{:03}, Y{:03}) on page {page:02}: Expected a change to {msg}, but none was found.",
-                        event.id, event.x, event.y
-                    )
-                })
-                .collect())
-        }
+        Diagnostic::from(failures.as_ref())
     }
 }

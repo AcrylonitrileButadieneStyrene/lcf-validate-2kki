@@ -21,7 +21,7 @@ impl super::Lint for V44AssignmentLint {
                         } => {
                             if (mode == 0 && start == 44) || (mode == 1 && start <= 44 && 44 <= end)
                             {
-                                failures.push((event, page_index + 1))
+                                failures.push((event, page_index + 1, "writes to V0044"))
                             }
                         }
 
@@ -31,20 +31,6 @@ impl super::Lint for V44AssignmentLint {
             }
         }
 
-        if failures.is_empty() {
-            Diagnostic::Normal
-        } else {
-            Diagnostic::Error(
-                failures
-                    .into_iter()
-                    .map(|(event, page)| {
-                        format!(
-                            "\n    EV{:04} (X{:03}, Y{:03}) on page {page} writes to V0044",
-                            event.id, event.x, event.y
-                        )
-                    })
-                    .collect(),
-            )
-        }
+        Diagnostic::from(failures.as_ref())
     }
 }

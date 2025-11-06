@@ -52,7 +52,7 @@ impl super::Lint for TissueLint {
             .filter_map(|(index, id)| {
                 let Some(event) = map.events.iter().find(|event| event.id == *id) else {
                     return Some(format!(
-                        "\n    Helper event {} points to non-existent EV{id:04}",
+                        "\n    Helper event {} points to non-existent event EV{id:04}",
                         index + 1
                     ));
                 };

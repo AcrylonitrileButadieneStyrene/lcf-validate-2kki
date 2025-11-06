@@ -18,7 +18,11 @@ impl super::Lint for InstantScrollLint {
                     match command.instruction {
                         Instruction::ScrollMap { speed, .. } => {
                             if speed == 53 {
-                                failures.push((event, page_index + 1))
+                                failures.push((
+                                    event,
+                                    page_index + 1,
+                                    "manually scrolls with speed 53",
+                                ))
                             }
                         }
 
@@ -28,20 +32,6 @@ impl super::Lint for InstantScrollLint {
             }
         }
 
-        if failures.is_empty() {
-            Diagnostic::Normal
-        } else {
-            Diagnostic::Error(
-                failures
-                    .into_iter()
-                    .map(|(event, page)| {
-                        format!(
-                            "\n    EV{:04} (X{:03}, Y{:03}) on page {page} manually scrolls the map with speed 53",
-                            event.id, event.x, event.y
-                        )
-                    })
-                    .collect(),
-            )
-        }
+        Diagnostic::from(failures.as_ref())
     }
 }
