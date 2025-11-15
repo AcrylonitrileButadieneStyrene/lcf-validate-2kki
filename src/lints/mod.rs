@@ -5,10 +5,16 @@ pub const ALL: &[&'static dyn Lint] = &[
     &instant_scroll::InstantScrollLint,
     &special_skills::SpecialSkillsLint,
     &comment::CommentLint,
+    &show_picture::ShowPictureLint,
+    &blue_sign::BlueSignLint,
+    &pade_transfer::PadeTransferLint,
 ];
 
+mod blue_sign;
 mod comment;
 mod instant_scroll;
+mod pade_transfer;
+mod show_picture;
 mod special_skills;
 mod tissues;
 mod v44_assignment;

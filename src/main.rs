@@ -25,7 +25,7 @@ struct Args {
     #[arg(long)]
     all: bool,
     /// Minimum level for logging, everything lower will be ignored.
-    #[arg(long)]
+    #[arg(long, default_value = "all")]
     level: LogLevel,
 }
 

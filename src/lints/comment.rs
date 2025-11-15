@@ -17,14 +17,13 @@ impl super::Lint for CommentLint {
                 for command in &page.commands {
                     match command.instruction {
                         Instruction::Comment | Instruction::CommentNextLine => {
-                            let max = 56 - command.indent * 2;
-                            if encoding_rs::SHIFT_JIS
+                            let max = 56u32.saturating_sub(command.indent * 2);
+                            let len = encoding_rs::SHIFT_JIS
                                 .decode(&command.string)
                                 .0
                                 .chars()
-                                .count()
-                                > max as usize
-                            {
+                                .count();
+                            if len > max as usize {
                                 failures.push((event, page_index + 1, "comment too long"));
                             }
                         }
