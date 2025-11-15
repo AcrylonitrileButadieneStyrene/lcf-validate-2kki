@@ -1,7 +1,5 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
-use crate::Diagnostic;
-
 pub struct CommentLint;
 
 impl super::Lint for CommentLint {
@@ -9,12 +7,12 @@ impl super::Lint for CommentLint {
         "Comments should not be too long"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
-        let mut failures = Vec::new();
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Vec<super::Diagnostic> {
+        let mut diagnostics = Vec::new();
 
         for event in &map.events {
             for (page_index, page) in event.pages.iter().enumerate() {
-                for command in &page.commands {
+                for (command_index, command) in page.commands.iter().enumerate() {
                     match command.instruction {
                         Instruction::Comment | Instruction::CommentNextLine => {
                             let max = 56u32.saturating_sub(command.indent * 2);
@@ -24,7 +22,16 @@ impl super::Lint for CommentLint {
                                 .chars()
                                 .count();
                             if len > max as usize {
-                                failures.push((event, page_index + 1, "comment too long"));
+                                diagnostics.push(super::Diagnostic {
+                                    event: Some(super::DiagnosticEvent::from(event).with_page(
+                                        super::DiagnosticPage::new_from_indexes(
+                                            page_index,
+                                            command_index,
+                                        ),
+                                    )),
+                                    level: super::DiagnosticLevel::Warning,
+                                    message: Some(format!("{len}/{max}")),
+                                });
                             }
                         }
                         _ => (),
@@ -33,6 +40,6 @@ impl super::Lint for CommentLint {
             }
         }
 
-        Diagnostic::from(failures.as_ref()).to_warning()
+        diagnostics
     }
 }

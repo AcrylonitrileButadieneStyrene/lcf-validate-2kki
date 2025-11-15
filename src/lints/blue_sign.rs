@@ -1,6 +1,9 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
-use crate::Diagnostic;
+use crate::{
+    Diagnostic,
+    lints::{DiagnosticEvent, DiagnosticLevel},
+};
 
 pub struct BlueSignLint;
 
@@ -9,9 +12,9 @@ impl super::Lint for BlueSignLint {
         "Blue signs must have annotations"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
-        let exclusions = vec!["eserved", "予約", "接続"];
-        let mut failures = Vec::new();
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Vec<Diagnostic> {
+        let exclusions = ["eserved", "予約", "接続"];
+        let mut diagnostics = Vec::new();
 
         for event in &map.events {
             let is_blue_sign = event.pages.iter().any(|page| {
@@ -38,11 +41,15 @@ impl super::Lint for BlueSignLint {
                     });
 
                 if !allowed {
-                    failures.push((event, 0, ""));
+                    diagnostics.push(Diagnostic {
+                        level: DiagnosticLevel::Error,
+                        event: Some(DiagnosticEvent::from(event)),
+                        message: None,
+                    });
                 }
             }
         }
 
-        Diagnostic::from(failures.as_ref()).to_warning()
+        diagnostics
     }
 }

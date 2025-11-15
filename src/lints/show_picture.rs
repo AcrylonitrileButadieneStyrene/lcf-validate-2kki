@@ -1,7 +1,5 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
-use crate::Diagnostic;
-
 pub struct ShowPictureLint;
 
 impl super::Lint for ShowPictureLint {
@@ -10,22 +8,25 @@ impl super::Lint for ShowPictureLint {
         "MovePicture is preferrable to ShowPicture"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
-        let mut failures = Vec::new();
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Vec<super::Diagnostic> {
+        let mut diagnostics = Vec::new();
 
         for event in &map.events {
             for (page_index, page) in event.pages.iter().enumerate() {
-                for command in &page.commands {
-                    match command.instruction {
-                        Instruction::ShowPicture { .. } => {
-                            failures.push((event, page_index + 1, ""));
-                        }
-                        _ => (),
+                for (command_index, command) in page.commands.iter().enumerate() {
+                    if let Instruction::ShowPicture { .. } = command.instruction {
+                        diagnostics.push(super::Diagnostic {
+                            event: Some(super::DiagnosticEvent::from(event).with_page(
+                                super::DiagnosticPage::new_from_indexes(page_index, command_index),
+                            )),
+                            level: super::DiagnosticLevel::Warning,
+                            message: None,
+                        });
                     }
                 }
             }
         }
 
-        Diagnostic::from(failures.as_ref()).to_warning()
+        diagnostics
     }
 }

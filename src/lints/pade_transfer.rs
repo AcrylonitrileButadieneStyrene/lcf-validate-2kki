@@ -1,7 +1,5 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
-use crate::Diagnostic;
-
 pub struct PadeTransferLint;
 
 impl super::Lint for PadeTransferLint {
@@ -9,10 +7,10 @@ impl super::Lint for PadeTransferLint {
         "Transitioning maps should be unPADEed"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
-        let mut failures = Vec::new();
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Vec<super::Diagnostic> {
+        let mut diagnostics = Vec::new();
 
-        let exclusions = vec!["移動先マップで直接「ｲﾍﾞﾝﾄ中動作禁止解除」しています。"];
+        let exclusions = ["移動先マップで直接「ｲﾍﾞﾝﾄ中動作禁止解除」しています。"];
 
         for event in &map.events {
             for (page_index, page) in event.pages.iter().enumerate() {
@@ -47,11 +45,19 @@ impl super::Lint for PadeTransferLint {
                 }
 
                 if pade && moved && !ignored {
-                    failures.push((event, page_index + 1, ""));
+                    diagnostics.push(super::Diagnostic {
+                        event: Some(
+                            super::DiagnosticEvent::from(event).with_page(
+                                crate::lints::DiagnosticPage::new_from_index(page_index),
+                            ),
+                        ),
+                        level: crate::lints::DiagnosticLevel::Error,
+                        message: None,
+                    });
                 }
             }
         }
 
-        Diagnostic::from(failures.as_ref())
+        diagnostics
     }
 }

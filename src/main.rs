@@ -1,5 +1,7 @@
 #![warn(clippy::nursery)]
 #![warn(clippy::pedantic)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::missing_panics_doc)]
 
 use lcf::ConvertExt;
 use owo_colors::OwoColorize;
@@ -7,11 +9,10 @@ use owo_colors::OwoColorize;
 mod directory_browser;
 mod lints;
 
-pub use lints::{Diagnostic, Lint};
+pub use lints::{Diagnostic, DiagnosticEvent, DiagnosticLevel, DiagnosticPage, Lint};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum LogLevel {
-    #[default]
     All,
     Warn,
     Error,
@@ -48,13 +49,13 @@ fn main() {
                 check_map(&path.join(format!("Map{id:04}.lmu")), &args.level);
             }
         } else {
-            check_map(&directory_browser::run(path), &args.level);
+            check_map(&directory_browser::run(&path), &args.level);
         }
     } else {
         match args.path.extension().and_then(std::ffi::OsStr::to_str) {
-            Some("ldb") | Some("lmt") => {
+            Some("ldb" | "lmt") => {
                 check_map(
-                    &directory_browser::run(args.path.parent().unwrap().to_owned()),
+                    &directory_browser::run(args.path.parent().unwrap()),
                     &args.level,
                 );
             }
@@ -109,25 +110,45 @@ fn check_map(map: &std::path::Path, level: &LogLevel) {
     let results = lints::ALL
         .iter()
         .map(|lint| (lint.name(), lint.test(&map)))
-        .filter(|(_, diagnostic)| match diagnostic {
-            Diagnostic::Normal => *level == LogLevel::All,
-            Diagnostic::Warning(_) => *level != LogLevel::Error,
-            Diagnostic::Error(_) => true,
+        .filter_map(|(name, diagnostics)| match level {
+            LogLevel::All => Some((name, diagnostics)),
+            LogLevel::Warn => {
+                if diagnostics.is_empty() {
+                    None
+                } else {
+                    Some((name, diagnostics))
+                }
+            }
+            LogLevel::Error => {
+                let diagnostics = diagnostics
+                    .into_iter()
+                    .filter(|diagnostic| matches!(diagnostic.level, DiagnosticLevel::Error))
+                    .collect::<Vec<_>>();
+                if diagnostics.is_empty() {
+                    None
+                } else {
+                    Some((name, diagnostics))
+                }
+            }
         })
         .collect::<Vec<_>>();
 
     if !results.is_empty() {
         print_file();
-        for (name, diagnostic) in results {
-            match diagnostic {
-                Diagnostic::Normal => println!("  {}", name.green()),
-                Diagnostic::Warning(warning) => println!("  {}: {warning}", name.yellow()),
-                Diagnostic::Error(err) => println!("  {}: {err}", name.red()),
+        for (name, diagnostics) in results {
+            if diagnostics.is_empty() {
+                println!("  {}", name.green());
+            } else {
+                println!("  {name}:");
+                for diagnostic in diagnostics {
+                    match diagnostic.level {
+                        DiagnosticLevel::Warning => println!("    {}", diagnostic.yellow()),
+                        DiagnosticLevel::Error => println!("    {}", diagnostic.red()),
+                    }
+                }
             }
         }
     }
-
-    return;
 }
 
 fn exit() -> ! {

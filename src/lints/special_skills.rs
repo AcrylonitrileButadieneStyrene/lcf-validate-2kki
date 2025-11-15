@@ -1,7 +1,5 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
-use crate::Diagnostic;
-
 pub struct SpecialSkillsLint;
 
 impl super::Lint for SpecialSkillsLint {
@@ -9,13 +7,13 @@ impl super::Lint for SpecialSkillsLint {
         "Special skill usage must be annotated"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Vec<super::Diagnostic> {
         let mut excused = false;
-        let mut failures = Vec::new();
+        let mut diagnostics = Vec::new();
 
         for event in &map.events {
             for (page_index, page) in event.pages.iter().enumerate() {
-                for command in &page.commands {
+                for (command_index, command) in page.commands.iter().enumerate() {
                     match command.instruction {
                         Instruction::Comment | Instruction::CommentNextLine => {
                             // TODO: in the future, this should validate that the skill it says
@@ -35,11 +33,16 @@ impl super::Lint for SpecialSkillsLint {
                             ..
                         } if mode == 5 && field1 == 2 && field2 == 4 => {
                             if !excused {
-                                failures.push((
-                                    event,
-                                    page_index + 1,
-                                    "special skill used to check map completion without annotation",
-                                ))
+                                diagnostics.push(super::Diagnostic {
+                                    event: Some(super::DiagnosticEvent::from(event).with_page(
+                                        super::DiagnosticPage::new_from_indexes(
+                                            page_index,
+                                            command_index,
+                                        ),
+                                    )),
+                                    level: super::DiagnosticLevel::Error,
+                                    message: None,
+                                });
                             }
                         }
                         _ => (),
@@ -48,6 +51,6 @@ impl super::Lint for SpecialSkillsLint {
             }
         }
 
-        Diagnostic::from(failures.as_ref())
+        diagnostics
     }
 }

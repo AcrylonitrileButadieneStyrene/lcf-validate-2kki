@@ -1,7 +1,5 @@
 use lcf::raw::lmu::event::instruction::Instruction;
 
-use crate::Diagnostic;
-
 pub struct WeatherLint;
 
 enum State {
@@ -16,9 +14,9 @@ impl super::Lint for WeatherLint {
         "Parity between weather and V0042"
     }
 
-    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Diagnostic {
+    fn test(&self, map: &lcf::lmu::LcfMapUnit) -> Vec<super::Diagnostic> {
         let mut state = State::Normal;
-        let mut failures = Vec::new();
+        let mut diagnostics = Vec::new();
 
         for event in &map.events {
             for (page_index, page) in event.pages.iter().enumerate() {
@@ -50,28 +48,27 @@ impl super::Lint for WeatherLint {
                     }
                 }
 
-                match state {
-                    State::ExpectingVariable => {
-                        failures.push((
-                            event,
-                            page_index + 1,
-                            "V0042 is not changed after changing the weather.",
-                        ));
-                        state = State::Normal;
-                    }
-                    State::ExpectingWeather => {
-                        failures.push((
-                            event,
-                            page_index + 1,
-                            "The weather is not changed after changing V0042.",
-                        ));
-                        state = State::Normal;
-                    }
-                    _ => (),
-                }
+                // todo: find index of last command
+                diagnostics.push(super::Diagnostic {
+                    event: Some(super::DiagnosticEvent::from(event).with_page(
+                        super::DiagnosticPage::new_from_index(page_index),
+                    )),
+                    level: super::DiagnosticLevel::Error,
+                    message: Some(match state {
+                        State::ExpectingVariable => {
+                            state = State::Normal;
+                            "V0042 is not changed after changing the weather.".to_string()
+                        }
+                        State::ExpectingWeather => {
+                            state = State::Normal;
+                            "The weather is not changed after changing V0042.".to_string()
+                        }
+                        _ => continue,
+                    }),
+                });
             }
         }
 
-        Diagnostic::from(failures.as_ref())
+        diagnostics
     }
 }
