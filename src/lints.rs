@@ -12,12 +12,14 @@ pub const ALL: &[&'static dyn Lint] = &[
     &show_picture::ShowPictureLint,
     &blue_sign::BlueSignLint,
     &pade_transfer::PadeTransferLint,
+    &parallel_erase::ParallelEraseLint,
 ];
 
 mod blue_sign;
 mod comment;
 mod instant_scroll;
 mod pade_transfer;
+mod parallel_erase;
 mod show_picture;
 mod special_skills;
 mod tissues;

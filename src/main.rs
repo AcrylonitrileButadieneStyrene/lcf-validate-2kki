@@ -28,6 +28,9 @@ struct Args {
     /// Minimum level for logging, everything lower will be ignored.
     #[arg(long, default_value = "all")]
     level: LogLevel,
+    /// Ignored lints
+    #[arg(long, value_delimiter = ',')]
+    ignore: Vec<usize>,
 }
 
 fn main() {
@@ -46,10 +49,14 @@ fn main() {
             .unwrap();
 
             for (id, _) in &tree.maps[1..] {
-                check_map(&path.join(format!("Map{id:04}.lmu")), &args.level);
+                check_map(
+                    &path.join(format!("Map{id:04}.lmu")),
+                    &args.level,
+                    &args.ignore,
+                );
             }
         } else {
-            check_map(&directory_browser::run(&path), &args.level);
+            check_map(&directory_browser::run(&path), &args.level, &args.ignore);
         }
     } else {
         match args.path.extension().and_then(std::ffi::OsStr::to_str) {
@@ -57,9 +64,10 @@ fn main() {
                 check_map(
                     &directory_browser::run(args.path.parent().unwrap()),
                     &args.level,
+                    &args.ignore,
                 );
             }
-            Some("lmu") => check_map(&args.path, &args.level),
+            Some("lmu") => check_map(&args.path, &args.level, &args.ignore),
             x => {
                 println!(
                     "Unrecognized extension {} is not supported.",
@@ -86,7 +94,7 @@ fn find_game_dir(base: std::path::PathBuf) -> Option<std::path::PathBuf> {
     }
 }
 
-fn check_map(map: &std::path::Path, level: &LogLevel) {
+fn check_map(map: &std::path::Path, level: &LogLevel, ignored: &[usize]) {
     let print_file = || println!("{}:", map.file_name().unwrap().to_str().unwrap());
 
     let data = match std::fs::read(map) {
@@ -109,14 +117,16 @@ fn check_map(map: &std::path::Path, level: &LogLevel) {
 
     let results = lints::ALL
         .iter()
-        .map(|lint| (lint.name(), lint.test(&map)))
-        .filter_map(|(name, diagnostics)| match level {
-            LogLevel::All => Some((name, diagnostics)),
+        .enumerate()
+        .filter(|(index, _)| !ignored.iter().any(|ignore| *ignore == index + 1))
+        .map(|(index, lint)| (index + 1, lint.name(), lint.test(&map)))
+        .filter_map(|(index, name, diagnostics)| match level {
+            LogLevel::All => Some((index, name, diagnostics)),
             LogLevel::Warn => {
                 if diagnostics.is_empty() {
                     None
                 } else {
-                    Some((name, diagnostics))
+                    Some((index, name, diagnostics))
                 }
             }
             LogLevel::Error => {
@@ -127,7 +137,7 @@ fn check_map(map: &std::path::Path, level: &LogLevel) {
                 if diagnostics.is_empty() {
                     None
                 } else {
-                    Some((name, diagnostics))
+                    Some((index, name, diagnostics))
                 }
             }
         })
@@ -135,11 +145,11 @@ fn check_map(map: &std::path::Path, level: &LogLevel) {
 
     if !results.is_empty() {
         print_file();
-        for (name, diagnostics) in results {
+        for (index, name, diagnostics) in results {
             if diagnostics.is_empty() {
-                println!("  {}", name.green());
+                println!("  L{index:04}: {}", name.green());
             } else {
-                println!("  {name}:");
+                println!("  L{index:04}: {name}:");
                 for diagnostic in diagnostics {
                     match diagnostic.level {
                         DiagnosticLevel::Warning => println!("    {}", diagnostic.yellow()),
