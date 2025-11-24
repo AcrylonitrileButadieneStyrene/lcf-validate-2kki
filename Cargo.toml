@@ -14,9 +14,9 @@ panic = "abort"
 [dependencies]
 atty = "0.2.14"
 clap = { version = "4.5.51", features = ["derive"] }
-crossterm = "0.29.0"
+either = "1.15.0"
 encoding_rs = "0.8.35"
+indicatif = { version = "0.18.3", features = ["rayon"] }
 lcf = "0.8.2"
-num_enum = "0.7.5"
 owo-colors = "4.2.3"
-ratatui = "0.29.0"
+rayon = "1.11.0"
